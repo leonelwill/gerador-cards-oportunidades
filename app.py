@@ -20,25 +20,30 @@ CORES = {
     "linha": "#2c3e50"         # Cinza escuro discreto
 }
 
-# --- MAPAS DE EMOJIS E CATEGORIAS ---
+# --- LISTAS E CONFIGURAÇÕES ---
+# Ordem corrigida conforme solicitado
+TIPOS_ATIVOS = [
+    "CDB", "LCI", "LCA", "CRI", "CRA", "Debênture", "Tesouro Direto", 
+    "LC", "RDB", "Fundo de Renda Fixa"
+]
+
 MAPA_EMOJIS = {
-    "CRA": "🚜", "LCA": "🚜",      # Agro
-    "CRI": "🏢", "LCI": "🏢",      # Imobiliário
-    "Debênture": "🏭",             # Infra/Empresa
-    "Tesouro Direto": "🇧🇷",        # Governo
+    "CRA": "🚜", "LCA": "🚜",      
+    "CRI": "🏢", "LCI": "🏢",      
+    "Debênture": "🏭",             
+    "Tesouro Direto": "🇧🇷",        
     "CDB": "🏦", "LC": "🏦", "RDB": "🏦", "Fundo de Renda Fixa": "📈"
 }
 
 ATIVOS_FGC = ["CDB", "LCI", "LCA", "LC", "RDB"]
 
-# Lista de sugestões de Títulos
 SUGESTOES_TITULO = [
-    "Destaques da Semana",
-    "Oportunidades Renda Fixa",
-    "Carteira Recomendada",
-    "Melhores Taxas Hoje",
-    "Seleção do Assessor",
-    "Giro de Mercado"
+    "Destaques da Semana", "Oportunidades Renda Fixa", "Carteira Recomendada",
+    "Melhores Taxas Hoje", "Seleção do Assessor", "Giro de Mercado"
+]
+
+OPCOES_MINIMO = [
+    "R$ 1.000,00", "R$ 5.000,00", "R$ 10.000,00", "R$ 25.000,00", "R$ 50.000,00", "Outro (Digitar)"
 ]
 
 st.title("Gerador de Cards - Renda Fixa 🚀")
@@ -48,7 +53,6 @@ with st.sidebar:
     st.header("⚙️ Configuração Visual")
     plataforma = st.selectbox("Plataforma", ["WhatsApp", "Instagram"])
     
-    # Lógica de Template
     formato = "Stories/Status"
     arquivo_template = "template.png"
     if plataforma == "Instagram":
@@ -59,13 +63,12 @@ with st.sidebar:
 
     st.markdown("---")
     st.write("📝 **Título do Card**")
-    # Opção de selecionar ou escrever livremente
     modo_titulo = st.radio("Estilo do Título:", ["Selecionar da Lista", "Personalizado"])
     
     if modo_titulo == "Selecionar da Lista":
         titulo_card = st.selectbox("Escolha um título:", SUGESTOES_TITULO)
     else:
-        titulo_card = st.text_input("Digite o título:", "Oportunidades Exclusivas")
+        titulo_card = st.text_input("Digite o título:", "")
 
     st.markdown("---")
     st.write("📂 **Ativos**")
@@ -88,81 +91,109 @@ for i in range(st.session_state.qtd_ativos):
     with st.container():
         st.markdown(f"#### 📄 Ativo {i+1}")
         
-        # Linha 1: Tipo, Emissor, Rating
+        # Colunas superiores
         c_tipo, c_emissor, c_rating = st.columns([1.5, 2.5, 1])
-        with c_tipo:
-            tipo = st.selectbox("Tipo", list(MAPA_EMOJIS.keys()), key=f"tipo_{i}")
-            subtipo = ""
-            if tipo == "Tesouro Direto":
-                subtipo = st.selectbox("Título", ["Selic", "IPCA+", "Prefixado", "Renda+"], key=f"sub_{i}")
         
+        with c_tipo:
+            tipo = st.selectbox("Tipo", TIPOS_ATIVOS, key=f"tipo_{i}")
+            
+            # Lógica Especial para Tesouro
+            subtipo_tesouro = ""
+            ano_tesouro = ""
+            if tipo == "Tesouro Direto":
+                subtipo_tesouro = st.selectbox("Título", ["Tesouro Selic", "Tesouro IPCA+", "Tesouro Prefixado", "Tesouro Renda+"], key=f"sub_{i}")
+                
+                # Se for IPCA, Prefixado ou Renda+, pede o Ano
+                if "Selic" not in subtipo_tesouro:
+                    ano_tesouro = st.text_input("Ano de Vencimento (ex: 2035)", "", key=f"ano_tes_{i}")
+
         with c_emissor:
-            label_emissor = "Emissor" if tipo != "Tesouro Direto" else "Governo"
-            emissor = st.text_input(label_emissor, "Banco Master", key=f"emissor_{i}")
+            if tipo == "Tesouro Direto":
+                emissor = "Governo Federal" # Interno apenas
+                st.info(f"Título: {subtipo_tesouro} {ano_tesouro}") # Feedback visual
+            else:
+                emissor = st.text_input("Emissor (Banco/Empresa)", "", key=f"emissor_{i}")
         
         with c_rating:
-            # Força Maiúsculas
-            rating_input = st.text_input("Rating", "AAA", key=f"rating_{i}")
-            rating = rating_input.upper()
+            if tipo == "Tesouro Direto":
+                rating = "SOBERANO" # Tesouro é risco soberano
+                st.write("Rating: Soberano")
+            else:
+                rating_input = st.text_input("Rating", "", key=f"rating_{i}")
+                rating = rating_input.upper()
 
-        # Linha 2: Rentabilidade (Indexador + Taxa)
-        st.caption("Rentabilidade")
+        # Linha 2: Rentabilidade
         c_index, c_taxa_val = st.columns([1.5, 2])
         with c_index:
             indexador = st.selectbox("Indexador", ["% do CDI", "IPCA +", "Prefixado", "CDI +"], key=f"idx_{i}")
         with c_taxa_val:
-            val_taxa = st.text_input("Valor da Taxa (Só número)", "120", key=f"val_taxa_{i}")
+            val_taxa = st.text_input("Valor da Taxa (Só número)", "", key=f"val_taxa_{i}")
         
         # Montagem da String da Taxa
         if indexador == "% do CDI":
-            taxa_final = f"{val_taxa}% do CDI"
+            taxa_final = f"{val_taxa}% do CDI" if val_taxa else ""
         elif indexador == "IPCA +":
-            taxa_final = f"IPCA + {val_taxa}%"
+            taxa_final = f"IPCA + {val_taxa}% a.a." if val_taxa else ""
         elif indexador == "Prefixado":
-            taxa_final = f"{val_taxa}% a.a."
+            taxa_final = f"{val_taxa}% a.a." if val_taxa else ""
         elif indexador == "CDI +":
-            taxa_final = f"CDI + {val_taxa}%"
+            taxa_final = f"CDI + {val_taxa}%" if val_taxa else ""
         else:
             taxa_final = val_taxa
 
         # Linha 3: Prazo e Mínimo
         c_prazo_val, c_prazo_unid, c_min, c_juros = st.columns([1, 1, 1.5, 1.5])
         with c_prazo_val:
-            prazo_val = st.text_input("Prazo (Valor)", "2", key=f"pz_v_{i}")
+            prazo_val = st.text_input("Prazo (Valor)", "", key=f"pz_v_{i}")
         with c_prazo_unid:
             prazo_unid = st.selectbox("Unidade", ["Anos", "Meses", "Dias", "Vencimento"], key=f"pz_u_{i}")
         
         # Montagem da String do Prazo
         if prazo_unid == "Vencimento":
-            vencimento_final = prazo_val # Assume que o user digitou a data
+            vencimento_final = prazo_val 
         else:
-            # Tratamento singular/plural simples
             if prazo_val == "1":
-                unidade_formatada = prazo_unid[:-1] # Remove o 's'
+                unidade_formatada = prazo_unid[:-1] 
             else:
                 unidade_formatada = prazo_unid
-            vencimento_final = f"{prazo_val} {unidade_formatada}"
+            vencimento_final = f"{prazo_val} {unidade_formatada}" if prazo_val else ""
 
         with c_min:
-            invest_min = st.text_input("Mínimo (R$)", "1.000,00", key=f"min_{i}")
+            # Lógica de Seleção de Mínimo + Digitação
+            sel_min = st.selectbox("Mínimo (Selecione ou Digite)", OPCOES_MINIMO, key=f"sel_min_{i}")
+            if sel_min == "Outro (Digitar)":
+                invest_min = st.text_input("Digite o valor (R$)", "", key=f"min_text_{i}")
+            else:
+                invest_min = sel_min
+
         with c_juros:
             pagamento_juros = st.selectbox("Juros", ["No Vencimento", "Mensais", "Semestrais"], key=f"juros_{i}")
             
-        # Isenção e Checkboxes
         isento_ir = st.checkbox("Isento de IR?", key=f"isento_{i}")
         
         st.markdown("---")
 
+        # Preparar dados para o objeto final
+        
+        # Nome de Exibição (Ajuste fino para Tesouro)
+        if tipo == "Tesouro Direto":
+            nome_display = f"{subtipo_tesouro} {ano_tesouro}"
+            emissor_display = "" # Não exibe 'Governo Federal' na imagem
+        else:
+            nome_display = f"{tipo}"
+            emissor_display = emissor
+
         dados_ativos.append({
             "tipo": tipo,
-            "subtipo": subtipo,
-            "emissor": emissor,
+            "nome_display": nome_display, # Novo campo para controlar título
+            "emissor": emissor_display,
             "rating": rating,
             "taxa": taxa_final,
             "vencimento": vencimento_final,
             "minimo": invest_min,
             "juros": pagamento_juros,
-            "isento": isento_ir
+            "isento": isento_ir,
+            "is_tesouro": (tipo == "Tesouro Direto")
         })
 
 # --- 3. FUNÇÃO DE GERAÇÃO DE IMAGEM ---
@@ -178,46 +209,51 @@ def gerar_card_final(dados, template_path, formato_tipo, titulo_top):
 
     # Carregar Fontes
     try:
-        font_main_title = ImageFont.truetype("Montserrat-Bold.ttf", 65) # Título Principal
-        font_titulo = ImageFont.truetype("Montserrat-Bold.ttf", 50)     # Nome do Ativo
-        font_destaque = ImageFont.truetype("Montserrat-Bold.ttf", 90)   # Taxa
-        font_texto = ImageFont.truetype("Montserrat-Regular.ttf", 45)   # Detalhes
-        font_pequena = ImageFont.truetype("Montserrat-Regular.ttf", 35) # Juros
-        font_tag = ImageFont.truetype("Montserrat-Bold.ttf", 35)        # Isento
+        font_main_title = ImageFont.truetype("Montserrat-Bold.ttf", 65)
+        font_titulo = ImageFont.truetype("Montserrat-Bold.ttf", 50)     
+        font_destaque = ImageFont.truetype("Montserrat-Bold.ttf", 90)   
+        font_texto = ImageFont.truetype("Montserrat-Regular.ttf", 45)   
+        font_pequena = ImageFont.truetype("Montserrat-Regular.ttf", 35) 
+        font_tag = ImageFont.truetype("Montserrat-Bold.ttf", 35)        
     except:
         font_main_title = font_titulo = font_destaque = font_texto = font_pequena = font_tag = ImageFont.load_default()
 
-    # --- DESENHAR TÍTULO PRINCIPAL ---
-    # Centralizado no topo (ajustar Y conforme seu template, assumindo Y=200 como área segura)
-    y_titulo_principal = 220 
-    draw.text((W/2, y_titulo_principal), titulo_top.upper(), font=font_main_title, fill=CORES['titulo_card'], anchor="mm")
+    # --- DESENHAR TÍTULO PRINCIPAL (Ajustado para cima) ---
+    y_titulo_principal = 160  # Subi de 220 para 160
+    if titulo_top:
+        draw.text((W/2, y_titulo_principal), titulo_top.upper(), font=font_main_title, fill=CORES['titulo_card'], anchor="mm")
 
-    # Layout Dinâmico
-    margem_topo = 400  # Aumentei para caber o título
-    margem_fundo = 250
+    # Layout Dinâmico (Margens ajustadas)
+    margem_topo = 300  # Reduzi de 400 para 300 para ganhar espaço
+    margem_fundo = 200 # Reduzi de 250 para 200
     area_util = H - margem_topo - margem_fundo
     
     qtd = len(dados)
     altura_slot = area_util / qtd
-    padding_slot = 40
+    padding_slot = 30 # Reduzi padding interno
 
     for idx, item in enumerate(dados):
         y_inicial = margem_topo + (idx * altura_slot) + padding_slot
         
-        # 1. Nome do Ativo (Tipo + Emissor)
-        nome_exibicao = f"{item['tipo']} {item['subtipo']}" if item['subtipo'] else item['tipo']
-        texto_titulo = f"{nome_exibicao} - {item['emissor']}"
-        if item['rating']:
-            texto_titulo += f" ({item['rating']})"
+        # 1. Nome do Ativo
+        # Se for Tesouro: Exibe "Tesouro IPCA+ 2035"
+        # Se for Outro: Exibe "CDB - Banco Master (AAA)"
+        
+        if item['is_tesouro']:
+            texto_titulo = item['nome_display']
+        else:
+            texto_titulo = f"{item['nome_display']} - {item['emissor']}"
+            if item['rating']:
+                texto_titulo += f" ({item['rating']})"
             
         draw.text((100, y_inicial), texto_titulo, font=font_titulo, fill=CORES['azul_claro'])
         
-        # 2. Taxa (Dourado)
+        # 2. Taxa
         draw.text((100, y_inicial + 70), item['taxa'], font=font_destaque, fill=CORES['dourado'])
         
-        # 3. Detalhes (Prazo e Mínimo)
+        # 3. Detalhes
         detalhes_y = y_inicial + 190
-        texto_detalhes = f"Prazo: {item['vencimento']}   |   Mín: R$ {item['minimo']}"
+        texto_detalhes = f"Prazo: {item['vencimento']}   |   Mín: {item['minimo']}"
         draw.text((100, detalhes_y), texto_detalhes, font=font_texto, fill=CORES['texto_branco'])
         
         # 4. Juros e Isenção
@@ -241,15 +277,14 @@ def gerar_texto_whatsapp(dados):
     texto_final = ""
     
     for item in dados:
-        # Pega o emoji baseado no tipo
         emoji_ativo = MAPA_EMOJIS.get(item['tipo'], "💰")
         
-        nome_ativo = f"{item['tipo']}"
-        if item['subtipo']: nome_ativo += f" ({item['subtipo']})"
-        
-        # LINHA UNIFICADA: Emoji Tipo Emissor (Rating)
-        linha_titulo = f"{emoji_ativo} *{nome_ativo} {item['emissor']}*"
-        if item['rating']: linha_titulo += f" ({item['rating']})"
+        # Título
+        if item['is_tesouro']:
+            linha_titulo = f"{emoji_ativo} *{item['nome_display']}*"
+        else:
+            linha_titulo = f"{emoji_ativo} *{item['nome_display']} {item['emissor']}*"
+            if item['rating']: linha_titulo += f" ({item['rating']})"
         
         texto_final += f"{linha_titulo}\n"
         
@@ -260,12 +295,11 @@ def gerar_texto_whatsapp(dados):
             texto_final += " (Isento de IR ✅)"
         texto_final += "\n"
         
-        texto_final += f"💰 Mínimo: R$ {item['minimo']}\n"
+        texto_final += f"💰 Mínimo: {item['minimo']}\n"
         
         if item['juros'] != "No Vencimento":
             texto_final += f"🔄 Juros: {item['juros']}\n"
             
-        # FGC Individual
         if item['tipo'] in ATIVOS_FGC:
             texto_final += "🔒 *Garantia FGC* (até R$ 250k)\n"
             
