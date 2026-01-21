@@ -1,3 +1,23 @@
+Boa tarde! Vamos resolver esses detalhes de refinamento agora mesmo.
+
+Você tem toda razão. Ao duplicar a palavra "Vencimento", a linha ficou muito extensa e empurrou o valor do investimento mínimo para fora da margem da imagem. E a clareza no *input* do Tesouro IPCA é fundamental para evitar erros de digitação.
+
+### O que foi alterado no código abaixo:
+
+1. **Correção da Duplicidade (Vencimento):**
+* **Antes:** O sistema gerava "Venc. em 2035". Na imagem, somava com o rótulo fixo e ficava: *"Vencimento: Venc. em 2035"*.
+* **Agora:** Se você colocar apenas o ano (ex: 2035) e deixar a data específica vazia, o sistema guarda apenas o número "2035".
+* **Resultado na Imagem:** Vai ficar **"Vencimento: 2035"**. Mais curto, limpo e sobra espaço para o "Mínimo" aparecer corretamente na mesma linha.
+
+
+2. **Input do Juro Real:**
+* Alterei o texto da caixa de digitação para: **"Juro Real % (Só número, ex: 6,4)"**. Fica bem claro para o usuário.
+
+
+
+Aqui está o código completo e corrigido. Pode substituir no seu `app.py`:
+
+```python
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 import io
@@ -137,7 +157,8 @@ for i in range(st.session_state.qtd_ativos):
                     val = st.text_input("Taxa Anual (ex: 13,5)", "", key=f"tx_tes_{i}")
                     taxa_final = f"{val}% a.a." if val else ""
                 else: 
-                    val = st.text_input("Juro Real (ex: 6,4)", "", key=f"tx_tes_{i}")
+                    # --- CORREÇÃO 2: LABEL DO JURO REAL ---
+                    val = st.text_input("Juro Real % (Só número, ex: 6,4)", "", key=f"tx_tes_{i}")
                     taxa_final = f"IPCA + {val}% a.a." if val else ""
         else:
             with c_index:
@@ -155,7 +176,10 @@ for i in range(st.session_state.qtd_ativos):
         with c_prazo:
             if tipo == "Tesouro Direto":
                 vencimento_final = st.text_input("Data Venc. (Opcional)", "", key=f"venc_tes_{i}")
-                if not vencimento_final and ano_tesouro: vencimento_final = f"Venc. em {ano_tesouro}"
+                # --- CORREÇÃO 1: EVITAR DUPLICIDADE ---
+                # Se não digitou data específica, usa apenas o ano limpo.
+                # O prefixo "Vencimento:" será adicionado na hora de desenhar o card.
+                if not vencimento_final and ano_tesouro: vencimento_final = ano_tesouro
             else:
                 c_p_val, c_p_unid = st.columns([1, 1])
                 with c_p_val: pz_v = st.text_input("Prazo", "", key=f"pz_v_{i}")
@@ -336,3 +360,5 @@ if st.session_state.imagem_gerada:
     with c_txt:
         st.subheader("Texto WhatsApp:")
         st.code(st.session_state.texto_gerado, language=None)
+
+```
